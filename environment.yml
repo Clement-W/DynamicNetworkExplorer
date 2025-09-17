@@ -1,0 +1,13 @@
+name: dynamic-network-explorer
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - numpy==1.26.4
+  - scipy==1.16.0
+  - pandas==2.3.1
+  - networkx==3.5
+  - pip:
+      - dash==3.1.1
+      - dash-cytoscape==1.0.2
