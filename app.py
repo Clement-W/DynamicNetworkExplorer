@@ -246,11 +246,12 @@ def update(tp_idx, selected, gene_query,cur_elems, stored_id):
 
     #  build the neighbour set for this time‑point 
     if hl_id:
-        neighbours = {
-            e["data"]["target"] if e["data"]["source"] == hl_id else e["data"]["source"]
-            for e in edges
-            if hl_id in (e["data"]["source"], e["data"]["target"])
-        }
+        # neighbours = {
+        #     e["data"]["target"] if e["data"]["source"] == hl_id else e["data"]["source"]
+        #     for e in edges
+        #     if hl_id in (e["data"]["source"], e["data"]["target"])
+        # }
+        neighbours = {e["data"]["target"] for e in edges if e["data"]["source"] == hl_id} # just consider outgoing edges for highlighting
     else:
         neighbours = set()
 
