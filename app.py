@@ -275,7 +275,8 @@ def update(tp_idx, selected, gene_query,cur_elems, stored_id):
     for e in edges:
         ed = e.copy()
         s, t = ed["data"]["source"], ed["data"]["target"]
-        ed["classes"] = "hlEdge" if hl_id and (s == hl_id or t == hl_id) else ""
+        #ed["classes"] = "hlEdge" if hl_id and (s == hl_id or t == hl_id) else ""
+        ed["classes"] = "hlEdge" if hl_id and s == hl_id else "" # just consider outgoing edges for highlighting
         new_edges.append(ed)
 
     return nodes + new_edges, f"Current display: Network underlying the transition from time-point {tp} to {int(tp)+1} ", hl_id
