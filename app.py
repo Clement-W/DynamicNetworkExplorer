@@ -86,7 +86,7 @@ timepoints = list(frames)
 
 #  Build union graph + layout 
 print("Building graph layout…")
-G = nx.Graph()
+G = nx.DiGraph()
 for df in frames.values(): #may take time
     G.add_edges_from(zip(df.gene1, df.gene2))
 
@@ -141,11 +141,16 @@ base_styles = [
     }},
     # edges
     {"selector": "edge", "style": {
-        "curve-style": "haystack", "opacity": .75,
+        "curve-style": "bezier", "opacity": .75,
         "width": "mapData(strength, 0, 10, 1, 6)", 
+        "target-arrow-shape": "triangle",
     }},
-    {"selector": "edge[sign = 1]", "style": {"line-color": EDGE_POS}},
-    {"selector": "edge[sign = -1]", "style": {"line-color": EDGE_NEG}},
+    {"selector": "edge[sign = 1]", "style": {"line-color": EDGE_POS, 
+                                             "target-arrow-color": EDGE_POS
+                                             }},
+    {"selector": "edge[sign = -1]", "style": {"line-color": EDGE_NEG,
+                                              "target-arrow-color": EDGE_NEG
+                                             }},
 
     
     {"selector": "node.tf", "style": {
@@ -167,17 +172,26 @@ base_styles = [
         "background-color": NODE_HL,
         "border-width": 3, "border-color": "#000", "z-index": 9999
     }},
+
     {"selector": ".hlEdge[sign = 1]", "style": {
+        "curve-style": "bezier",               # <-- arrows need non-haystack
+        "target-arrow-shape": "triangle",
         "line-color": EDGE_POS_HL,
         "opacity": 1,
         "width": 6,
-        "z-index": 999
+        "z-index": 999,
+        # arrow color
+        "target-arrow-color": EDGE_POS_HL,
     }},
     {"selector": ".hlEdge[sign = -1]", "style": {
+        "curve-style": "bezier",               # <-- arrows need non-haystack
+        "target-arrow-shape": "triangle",
         "line-color": EDGE_NEG_HL,
         "opacity": 1,
         "width": 6,
-        "z-index": 999
+        "z-index": 999,
+        # arrow color
+        "target-arrow-color": EDGE_NEG_HL,
     }},
 ]
 
