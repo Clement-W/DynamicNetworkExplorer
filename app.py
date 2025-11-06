@@ -96,8 +96,11 @@ pos_fn: Mapping[str, Callable] = {
     "kamada_kawai": nx.kamada_kawai_layout,
 }
 
+# Compute positions on an undirected view to avoid KK degeneracy
+H = G.to_undirected()         
+
 #adapt scale in case there are too much nodes so we can manage how close they are. Increase scale if too many nodes
-pos = pos_fn[LAYOUT_ALGO](G)
+pos = pos_fn[LAYOUT_ALGO](H)
 for p in pos.values():
     p[0] *= SCALE; p[1] *= SCALE
 
