@@ -20,8 +20,23 @@ parser.add_argument("--scale", type=int, default=1200,
                     help="Scale factor for node layout (default: 1200). Increase/Decrease if you increase/decrease topn.")
 parser.add_argument("--organism", type=str, default="mouse",
                     help="Organism for TF highlighting (default: mouse). Options: mouse, human, none")
+parser.add_argument(
+    "--subnetwork", type=str,  default="",
+    help=(
+        "Comma-separated list of source genes (gene1) to restrict the network to, "
+        "e.g. --subnetwork Tcf21,Zeb2. If empty, the full network is used." ))
+
 args = parser.parse_args()
 print(f"Arguments: {args}")
+
+if args.subnetwork:
+    SUBNETWORK_GENES = {
+        g.strip() for g in args.subnetwork.replace(";", ",").split(",") if g.strip()
+    }
+    print(f"Subnetwork mode ON. Source genes: {sorted(SUBNETWORK_GENES)}")
+else:
+    SUBNETWORK_GENES = set()
+    print("Subnetwork mode OFF. Using full network.")
 
 #  CONFIG 
 TOP_EDGES = args.topn
@@ -47,17 +62,61 @@ frames: dict[str, pd.DataFrame] = {}
 
 for fp in sorted(DATA_DIR.glob(FILE_PATTERN)):
     label = fp.stem.split("_", 2)[-1]
-    # Read only the first N rows; assumes CSV is already ranked by |strength| desc
-    df = pd.read_csv(
-        fp,
-        nrows=TOP_EDGES,  
-        usecols=["gene1", "gene2", "strength", "sign"],
-        dtype={"gene1": "string", "gene2": "string", "strength": "float32", "sign": "int8"}, 
-        engine="c",
-        memory_map=True
-    )
-    print(f"  {label}: {len(df)} edges")
+
+    if SUBNETWORK_GENES:
+        # Subnetwork mode:
+        #   1) Read the full file 
+        #   2) Keep only edges with gene1 in SUBNETWORK_GENES
+        #   3) Take top TOP_EDGES within THAT filtered set
+        df_full = pd.read_csv(
+            fp,
+            usecols=["gene1", "gene2", "strength", "sign"],
+            dtype={ "gene1": "string",   "gene2": "string", "strength": "float32", "sign": "int8"},
+            engine="c",
+            memory_map=True,
+        )
+
+        df_pass1 = df_full[df_full["gene1"].isin(SUBNETWORK_GENES)].groupby("gene1", group_keys=False).head(TOP_EDGES)
+
+        # Node set = seeds + all targets from pass 1
+        node_set = set(SUBNETWORK_GENES) | set(df_pass1["gene2"].dropna().tolist())
+
+        # For any gene1 in node_set, keep top K edges where gene2 is also in node_set
+        df = (
+            df_full[
+                df_full["gene1"].isin(node_set)
+                & df_full["gene2"].isin(node_set)
+            ]
+            .groupby("gene1", group_keys=False)
+            .head(TOP_EDGES)
+        )
+
+        del df_full
+        
+        print(f"  {label}: {len(df)} edges (subnetwork-filtered)")
+    else:
+        # Read only the first N rows; assumes CSV is already ranked by |strength| desc
+        df = pd.read_csv(
+            fp,
+            nrows=TOP_EDGES,  
+            usecols=["gene1", "gene2", "strength", "sign"],
+            dtype={"gene1": "string", "gene2": "string", "strength": "float32", "sign": "int8"}, 
+            engine="c",
+            memory_map=True
+        )
+        print(f"  {label}: {len(df)} edges")
+    
     frames[label] = df
+
+
+if SUBNETWORK_GENES:
+    total_edges = sum(len(df) for df in frames.values())
+    if total_edges == 0:
+        raise RuntimeError(
+            f"No edges found where gene1 is in {sorted(SUBNETWORK_GENES)}. "
+            "Check your gene names or the input files."
+        )
+    
 if not frames:
     raise RuntimeError(f"No CSVs like {FILE_PATTERN} in {DATA_DIR}")
 
