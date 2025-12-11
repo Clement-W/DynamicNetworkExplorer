@@ -83,12 +83,13 @@ python app.py -h
 
 ```
 options:
-  -h, --help           show this help message and exit
-  --topn TOPN          Number of top interactions to display per time-point (default: 5000)
-  --path PATH          Path to the directory containing the CSV files (default: data)
-  --pattern PATTERN    File pattern to match CSV files (default: ranked_interactions_*.csv)
-  --scale SCALE        Scale factor for node layout (default: 1200). Increase/Decrease if you increase/decrease topn.
-  --organism ORGANISM  Organism for TF highlighting (default: mouse). Options: mouse, human, none
+  -h, --help              Show this help message and exit
+  --topn TOPN             Number of top interactions to display per time-point (default: 5000)
+  --path PATH             Path to the directory containing the CSV files (default: data)
+  --pattern PATTERN       File pattern to match CSV files (default: ranked_interactions_*.csv)
+  --scale SCALE           Scale factor for node layout (default: 1200). Increase/Decrease if you increase/decrease topn.
+  --organism ORGANISM     Organism for TF highlighting (default: mouse). Options: mouse, human, none
+  --subnetwork SUBNETWORK Comma-separated list of source genes (gene1) to restrict the network to up to the topn interactions for each source (e.g. --subnetwork Tcf21,Zeb2. If empty, the full network is used)
 ```
 
 Examples:
