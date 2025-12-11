@@ -165,14 +165,21 @@ for p in pos.values():
 
 print(f"Graph has {len(G)} nodes and {G.number_of_edges()} unique edges")
 #ranked by degree node
-deg    = dict(G.degree())
-maxdeg = max(deg.values()) or 1
+
+deg_total = dict(G.degree())
+deg_in    = dict(G.in_degree())
+deg_out   = dict(G.out_degree())
+
+max_total = max(deg_total.values()) or 1
+max_in    = max(deg_in.values()) or 1
+max_out   = max(deg_out.values()) or 1
+
 neigh  = {n: list(G.neighbors(n)) for n in G.nodes()}
 all_genes  = sorted(G.nodes())
 gene_options = [{"label": g, "value": g} for g in all_genes]
 
 nodes_template = [
-    {"data": {"id": n, "label": n, "degree": deg[n], "is_tf": is_tf(n)},
+    {"data": {"id": n, "label": n, "degree_total": deg_total[n], "degree_in": deg_in[n], "degree_out": deg_out[n], "is_tf": is_tf(n)},
      "position": {"x": float(x), "y": float(y)},
      "classes": "tf" if is_tf(n) else ""}
     for n, (x, y) in pos.items()
@@ -198,8 +205,19 @@ base_styles = [
         "text-valign": "center", "color": "#222",
         "background-color": NODE_BASE,
         "border-width": 1, "border-color": "#555",
-        "width": f"mapData(degree, 0, {maxdeg}, 15, 60)",
-        "height": f"mapData(degree, 0, {maxdeg}, 15, 60)",
+        # default: total degree
+        "width":  f"mapData(degree_total, 0, {max_total}, 15, 60)",
+        "height": f"mapData(degree_total, 0, {max_total}, 15, 60)",
+    }},
+    # override when using in-degree
+    {"selector": "node.size_in", "style": {
+        "width":  f"mapData(degree_in, 0, {max_in}, 15, 60)",
+        "height": f"mapData(degree_in, 0, {max_in}, 15, 60)",
+    }},
+    # override when using out-degree
+    {"selector": "node.size_out", "style": {
+        "width":  f"mapData(degree_out, 0, {max_out}, 15, 60)",
+        "height": f"mapData(degree_out, 0, {max_out}, 15, 60)",
     }},
     # edges
     {"selector": "edge", "style": {
@@ -286,8 +304,22 @@ app.layout = html.Div([
                 value="all",
                 inline=True,
         ),
-        ], style={"marginBottom": "0.8rem"}),
-    ],style={"display": "flex","alignItems": "center","gap": "1.5rem","marginBottom": "0.8rem"}),
+        ]),
+
+        html.Div([
+            html.Label("Node size"),
+            dcc.RadioItems(
+                id="node-size-mode",
+                options=[
+                    {"label": "Total",     "value": "total"},
+                    {"label": "Out-degree", "value": "out"},
+                    {"label": "In-degree",  "value": "in"},
+                ],
+                value="total",
+                inline=True,
+            ),
+            ]),
+ ],style={"display": "flex","alignItems": "center","gap": "1.5rem","marginBottom": "0.8rem"}),
 
    
     cyto.Cytoscape(id="net",
@@ -311,9 +343,10 @@ app.layout = html.Div([
     Input("net", "selectedNodeData"), # fires on click & when selection cleared
     Input("gene-search", "value"),    # search box for genes
     Input("edge-filter", "value"),   # edge filter for activation, inhibition, all.
+    Input("node-size-mode", "value"),
     State("net", "elements"), State("store", "data"))
 
-def update(tp_idx, selected, gene_query,edge_filter, cur_elems, stored_id):
+def update(tp_idx, selected, gene_query,edge_filter, size_mode, cur_elems, stored_id):
     """Rebuild the visible sub-graph.
 
     * `hl_id` = currently highlighted node (may be None)
@@ -364,6 +397,13 @@ def update(tp_idx, selected, gene_query,edge_filter, cur_elems, stored_id):
     # rebuild nodes, preserving positions 
     pos_map = {el["data"]["id"]: el.get("position", {})
                for el in cur_elems if "source" not in el["data"]}
+    
+    size_class_map = {
+        "total": "size_total",  # uses default degree_total map
+        "in":    "size_in",
+        "out":   "size_out",
+    }
+    size_class = size_class_map.get(size_mode, "size_total")
 
     nodes = []
     for tmpl in nodes_template:
@@ -373,7 +413,7 @@ def update(tp_idx, selected, gene_query,edge_filter, cur_elems, stored_id):
   
         base_classes = tmpl.get("classes", "")
         hl_class = "hl" if hl_id and (n_id == hl_id or n_id in neighbours) else ""
-        n["classes"] = " ".join(c for c in [base_classes, hl_class] if c)
+        n["classes"] = " ".join(c for c in [base_classes, size_class, hl_class] if c)
         nodes.append(n)
 
     # add highlight class to edges for this frame 
