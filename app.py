@@ -203,7 +203,7 @@ base_styles = [
     }},
     # edges
     {"selector": "edge", "style": {
-        "curve-style": "bezier", "opacity": .75,
+        "curve-style": "bezier", "opacity": .4,
         "width": "mapData(strength, 0, 10, 1, 6)", 
         "target-arrow-shape": "triangle",
     }},
@@ -267,10 +267,27 @@ app.layout = html.Div([
     dcc.Slider(id="slider", min=0, max=len(timepoints)-1, step=None,
                marks={i: tp for i, tp in enumerate(timepoints)}, value=0,
                updatemode="drag"),
+
     html.Div([
-        html.Label("Find gene"),
-        dcc.Dropdown(id="gene-search", options=gene_options, placeholder="Type a gene…", clearable=True, style={"width":"420px"}),
-    ], style={"marginBottom": "0.8rem"}),
+        html.Div([
+            html.Label("Find gene"),
+            dcc.Dropdown(id="gene-search", options=gene_options, placeholder="Type a gene…", clearable=True, style={"width":"420px"}),
+        ], style={"marginRight": "2rem"}),
+        
+        html.Div([
+            html.Label("Show interactions", style={"marginBottom": "0.5rem"}),
+            dcc.RadioItems(
+                id="edge-filter",
+                options=[
+                    {"label": "All",           "value": "all"},
+                    {"label": "Activation (+)", "value": "pos"},
+                    {"label": "Inhibition (-)", "value": "neg"},
+                ],
+                value="all",
+                inline=True,
+        ),
+        ], style={"marginBottom": "0.8rem"}),
+    ],style={"display": "flex","alignItems": "center","gap": "1.5rem","marginBottom": "0.8rem"}),
 
    
     cyto.Cytoscape(id="net",
@@ -292,10 +309,11 @@ app.layout = html.Div([
     Output("net", "elements"), Output("tp-label", "children"), Output("store", "data"),
     Input("slider", "value"),        # time change
     Input("net", "selectedNodeData"), # fires on click & when selection cleared
-    Input("gene-search", "value"),
+    Input("gene-search", "value"),    # search box for genes
+    Input("edge-filter", "value"),   # edge filter for activation, inhibition, all.
     State("net", "elements"), State("store", "data"))
 
-def update(tp_idx, selected, gene_query,cur_elems, stored_id):
+def update(tp_idx, selected, gene_query,edge_filter, cur_elems, stored_id):
     """Rebuild the visible sub-graph.
 
     * `hl_id` = currently highlighted node (may be None)
@@ -318,7 +336,19 @@ def update(tp_idx, selected, gene_query,cur_elems, stored_id):
 
     # pick the edge list of the current time‑point
     tp    = timepoints[tp_idx]
-    edges = edges_by_tp[tp]            # list[dict] for this frame only
+    edges_all = edges_by_tp[tp]            # list[dict] for this frame only
+
+        # --- NEW: filter by sign, based on edge_filter -------------------------
+    if edge_filter == "pos":
+        # activation only (sign == 1)
+        edges = [e for e in edges_all if e["data"]["sign"] == 1]
+    elif edge_filter == "neg":
+        # inhibition only (sign == -1)
+        edges = [e for e in edges_all if e["data"]["sign"] == -1]
+    else:
+        # "all": no filtering
+        edges = edges_all
+    # -------------------------
 
     #  build the neighbour set for this time‑point 
     if hl_id:
