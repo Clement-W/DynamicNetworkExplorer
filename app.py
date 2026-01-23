@@ -12,9 +12,9 @@ import argparse
 parser = argparse.ArgumentParser(description="Dynamic Gene Interaction Network Explorer")
 parser.add_argument("--topn", type=int, default=5000,
                     help="Number of top interactions to display per time-point (default: 1000)")
-parser.add_argument("--path", type=str, default="data",
+parser.add_argument("--path", type=str, default="data3",
                     help="Path to the directory containing the CSV files (default: data)")
-parser.add_argument("--pattern", type=str, default="ranked_interactions_*.csv",
+parser.add_argument("--pattern", type=str, default="*ranked_interactions_*.csv",
                     help="File pattern to match CSV files (default: ranked_interactions_*.csv)")
 parser.add_argument("--scale", type=int, default=1200,
                     help="Scale factor for node layout (default: 1200). Increase/Decrease if you increase/decrease topn.")
@@ -62,6 +62,8 @@ frames: dict[str, pd.DataFrame] = {}
 
 for fp in sorted(DATA_DIR.glob(FILE_PATTERN)):
     label = fp.stem.split("_", 2)[-1]
+    if "interactions" in label:
+        label = label.replace("interactions_", "")
 
     if SUBNETWORK_GENES:
         # Subnetwork mode:
@@ -79,7 +81,7 @@ for fp in sorted(DATA_DIR.glob(FILE_PATTERN)):
         df_pass1 = df_full[df_full["gene1"].isin(SUBNETWORK_GENES)].groupby("gene1", group_keys=False).head(TOP_EDGES)
 
         # Node set = seeds + all targets from pass 1
-        node_set = set(SUBNETWORK_GENES) | set(df_pass1["gene2"].dropna().tolist())
+        node_set = set(SUBNETWORK_GENES) #| set(df_pass1["gene2"].dropna().tolist())
 
         # For any gene1 in node_set, keep top K edges where gene2 is also in node_set
         df = (
@@ -425,7 +427,7 @@ def update(tp_idx, selected, gene_query,edge_filter, size_mode, cur_elems, store
         ed["classes"] = "hlEdge" if hl_id and s == hl_id else "" # just consider outgoing edges for highlighting
         new_edges.append(ed)
 
-    return nodes + new_edges, f"Current display: Network underlying the transition from time-point {tp} to {int(tp)+1} ", hl_id
+    return nodes + new_edges, f"Current display: Network underlying the transition {tp}", hl_id
 
 print("App setup complete.")
 
